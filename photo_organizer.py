@@ -38,19 +38,22 @@ class ExifTool:
 
 
 class MultimediaFile:
-    def __init__(self, path: str, creation_date: datetime):
+    def __init__(self, path: str, size: int, creation_date: datetime):
         self.path = path
+        self.size = size
         self.creation_date = creation_date
 
 
-def extract_creation_date(file_path: str, exif_process: ExifTool) -> Optional[datetime]:
+def parse_multimedia_file(file_path: str, exif_process: ExifTool) -> Optional[MultimediaFile]:
     metadata = exif_process.get_metadata(file_path)
     if len(metadata) == 0:
         return None
     img_creation_date = None
+    file_size = None
     try:
         metadata = metadata[0]
         mime_type = metadata['File:MIMEType']
+        file_size = int(metadata['File:FileSize'])
         if mime_type == "image/jpeg" or mime_type == "image/png":
             tags = ["EXIF:DateTimeOriginal", "EXIF:CreateDate", "XMP:CreateDate"]
             for tag in tags:
@@ -63,19 +66,26 @@ def extract_creation_date(file_path: str, exif_process: ExifTool) -> Optional[da
     except Exception as e:
         print("Exception file parsing {}: {}".format(file_path, e), file=sys.stderr)
         return None
-    return img_creation_date
+    return MultimediaFile(file_path, file_size, img_creation_date)
 
 
 def enumerate_files(path: str) -> List[MultimediaFile]:
     result = []
+    count = 0
     with ExifTool() as exif_tool:
         for root, dirs, files in os.walk(path):
             for file in files:
                 file_path = os.path.join(root, file)
-                img_creation_date = extract_creation_date(file_path, exif_tool)
-                if img_creation_date is None:
+                mul_file = parse_multimedia_file(file_path, exif_tool)
+                if mul_file is None:
                     continue
-                result.append(MultimediaFile(file_path, img_creation_date))
+                result.append(mul_file)
+                count += 1
+                sys.stdout.write('\rEnumerating files: {}'.format(count))
+    if count != 0:
+        print()
+    else:
+        print("Enumerating files: 0")
     return result
 
 
