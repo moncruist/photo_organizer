@@ -64,7 +64,7 @@ def parse_multimedia_file(file_path: str, exif_process: ExifTool) -> Optional[Mu
             if "QuickTime:CreationDate" in metadata:
                 img_creation_date = datetime.strptime(metadata["QuickTime:CreationDate"], "%Y:%m:%d %H:%M:%S%z")
     except Exception as e:
-        print("Exception file parsing {}: {}".format(file_path, e), file=sys.stderr)
+        print("Exception wile parsing the file {}: {}".format(file_path, e), file=sys.stderr)
         return None
     return MultimediaFile(file_path, file_size, img_creation_date)
 
