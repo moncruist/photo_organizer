@@ -5,6 +5,8 @@ import json
 import sys
 from typing import List, Optional
 from datetime import datetime
+from pathlib import Path
+import shutil
 
 
 class ExifTool:
@@ -49,7 +51,6 @@ def parse_multimedia_file(file_path: str, exif_process: ExifTool) -> Optional[Mu
     if len(metadata) == 0:
         return None
     img_creation_date = None
-    file_size = None
     try:
         metadata = metadata[0]
         mime_type = metadata['File:MIMEType']
@@ -66,7 +67,10 @@ def parse_multimedia_file(file_path: str, exif_process: ExifTool) -> Optional[Mu
     except Exception as e:
         print("Exception wile parsing the file {}: {}".format(file_path, e), file=sys.stderr)
         return None
-    return MultimediaFile(file_path, file_size, img_creation_date)
+    if img_creation_date is not None:
+        return MultimediaFile(file_path, file_size, img_creation_date)
+    else:
+        return None
 
 
 def enumerate_files(path: str) -> List[MultimediaFile]:
@@ -89,14 +93,67 @@ def enumerate_files(path: str) -> List[MultimediaFile]:
     return result
 
 
+def construct_target_path(file: MultimediaFile, destination: str) -> str:
+    file_name = os.path.basename(file.path)
+    folder_name = file.creation_date.strftime("%Y-%m")
+    return os.path.join(destination, folder_name, file_name)
+
+
+def is_unique(file: MultimediaFile, target: str) -> bool:
+    if not os.path.exists(target):
+        return True
+    target_file_size = os.path.getsize(target)
+    if file.size != target_file_size:
+        print("Warning! File sizes didn't match: current={}, new={}. OVERWRITING".format(target_file_size, file.size))
+        return True
+    return False
+
+
+def unique_files(files: List[MultimediaFile], destination: str) -> List[MultimediaFile]:
+    result = []
+    count = 0
+    for file in files:
+        target_path = construct_target_path(file, destination)
+        unique = is_unique(file, target_path)
+        if unique:
+            result.append(file)
+            count += 1
+        sys.stdout.write('\rUnique files: {}'.format(count))
+    print()
+
+    return result
+
+
+def print_copy_file(file: MultimediaFile, destination: str) -> None:
+    print("Copy {} -> {}".format(file.path, construct_target_path(file, destination)))
+
+
+def copy_file(file: MultimediaFile, destination: str) -> None:
+    target_path = construct_target_path(file, destination)
+    target_dir = Path(target_path).parent
+    if not os.path.exists(target_dir):
+        target_dir.mkdir(parents=True)
+    shutil.copyfile(file.path, target_path)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Organizing image and video files")
     parser.add_argument("source", help="Source directory")
     parser.add_argument("destination", help="Destination directory")
+    parser.add_argument("--dry-run", action="store_true", help="Do not perform actual copy")
 
     args = parser.parse_args()
     files = enumerate_files(args.source)
     print("Found {} files".format(len(files)))
+
+    unique = unique_files(files, args.destination)
+    for i, file in enumerate(unique):
+        if args.dry_run:
+            print_copy_file(file, args.destination)
+        else:
+            sys.stdout.write('\rCopy file: {}'.format(i + 1))
+            copy_file(file, args.destination)
+    print()
 
 
 if __name__ == '__main__':
