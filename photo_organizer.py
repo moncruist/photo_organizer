@@ -12,7 +12,7 @@ import shutil
 class ExifTool:
     sentinel = "{ready}" + os.linesep
 
-    def __init__(self, executable="/usr/bin/exiftool"):
+    def __init__(self, executable="exiftool"):
         self.executable = executable
 
     def __enter__(self):
@@ -79,8 +79,8 @@ def enumerate_files(path: str) -> List[MultimediaFile]:
     with ExifTool() as exif_tool:
         for root, dirs, files in os.walk(path):
             for file in files:
-                file_path = os.path.join(root, file)
-                mul_file = parse_multimedia_file(file_path, exif_tool)
+                file_path = Path(root) / file
+                mul_file = parse_multimedia_file(str(file_path), exif_tool)
                 if mul_file is None:
                     continue
                 result.append(mul_file)
@@ -104,8 +104,8 @@ def is_unique(file: MultimediaFile, target: str) -> bool:
         return True
     target_file_size = os.path.getsize(target)
     if file.size != target_file_size:
-        print("Warning! File sizes didn't match: current={}, new={}. OVERWRITING".format(target_file_size, file.size))
-        return True
+        print("Warning! File sizes didn't match: current={}, new={}. SKIPPING".format(target_file_size, file.size))
+        return False
     return False
 
 
