@@ -55,7 +55,7 @@ def parse_multimedia_file(file_path: str, exif_process: ExifTool) -> Optional[Mu
         metadata = metadata[0]
         mime_type = metadata['File:MIMEType']
         file_size = int(metadata['File:FileSize'])
-        if mime_type == "image/jpeg" or mime_type == "image/png":
+        if mime_type == "image/jpeg" or mime_type == "image/png" or mime_type == "image/heic":
             tags = ["EXIF:DateTimeOriginal", "EXIF:CreateDate", "XMP:CreateDate"]
             for tag in tags:
                 if tag in metadata:
@@ -146,7 +146,7 @@ def main() -> None:
     files = enumerate_files(args.source)
     print("Found {} files".format(len(files)))
 
-    unique = unique_files(files, args.destination)
+    unique = unique_files(files, args.destination, args.skip_smaller)
     for i, file in enumerate(unique):
         if args.dry_run:
             print_copy_file(file, args.destination)
