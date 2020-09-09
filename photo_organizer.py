@@ -12,7 +12,7 @@ import shutil
 class ExifTool:
     sentinel = "{ready}" + os.linesep
 
-    def __init__(self, executable="/usr/bin/exiftool"):
+    def __init__(self, executable="exiftool"):
         self.executable = executable
 
     def __enter__(self):
@@ -79,8 +79,8 @@ def enumerate_files(path: str) -> List[MultimediaFile]:
     with ExifTool() as exif_tool:
         for root, dirs, files in os.walk(path):
             for file in files:
-                file_path = os.path.join(root, file)
-                mul_file = parse_multimedia_file(file_path, exif_tool)
+                file_path = Path(root) / file
+                mul_file = parse_multimedia_file(str(file_path), exif_tool)
                 if mul_file is None:
                     continue
                 result.append(mul_file)
