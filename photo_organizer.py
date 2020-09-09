@@ -99,22 +99,23 @@ def construct_target_path(file: MultimediaFile, destination: str) -> str:
     return os.path.join(destination, folder_name, file_name)
 
 
-def is_unique(file: MultimediaFile, target: str) -> bool:
-    if not os.path.exists(target):
-        return True
-    target_file_size = os.path.getsize(target)
-    if file.size != target_file_size:
-        print("Warning! File sizes didn't match: current={}, new={}. OVERWRITING".format(target_file_size, file.size))
-        return True
-    return False
-
-
-def unique_files(files: List[MultimediaFile], destination: str) -> List[MultimediaFile]:
+def unique_files(files: List[MultimediaFile], destination: str, skip_smaller: bool) -> List[MultimediaFile]:
     result = []
     count = 0
     for file in files:
         target_path = construct_target_path(file, destination)
-        unique = is_unique(file, target_path)
+        unique = not os.path.exists(target_path)
+        if not unique:
+            target_file_size = os.path.getsize(target_path)
+            if skip_smaller and (file.size > target_file_size):
+                print("Overwriting file {} (current size={}, new size={})".format(target_path, target_file_size,
+                                                                                  file.size))
+                unique = True
+            elif not skip_smaller and (file.size != target_file_size):
+                print("Warning! File {}: Sizes didn't match: current={}, new={}. OVERWRITING".format(target_path,
+                                                                                                     target_file_size,
+                                                                                                     file.size))
+                unique = True
         if unique:
             result.append(file)
             count += 1
@@ -141,6 +142,8 @@ def main() -> None:
     parser.add_argument("source", help="Source directory")
     parser.add_argument("destination", help="Destination directory")
     parser.add_argument("--dry-run", action="store_true", help="Do not perform actual copy")
+    parser.add_argument("--skip-smaller", "-s", action="store_true",
+                        help="Skip files if the new one is smaller than existing")
 
     args = parser.parse_args()
     files = enumerate_files(args.source)
