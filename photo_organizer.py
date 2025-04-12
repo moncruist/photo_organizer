@@ -56,14 +56,24 @@ def parse_multimedia_file(file_path: str, exif_process: ExifTool) -> Optional[Mu
         mime_type = metadata['File:MIMEType']
         file_size = int(metadata['File:FileSize'])
         if mime_type == "image/jpeg" or mime_type == "image/png" or mime_type == "image/heic":
-            tags = ["EXIF:DateTimeOriginal", "EXIF:CreateDate", "XMP:CreateDate"]
+            tags = ["EXIF:DateTimeOriginal", "EXIF:CreateDate", "XMP:CreateDate", "File:FileModifyDate"] # keep File:FileModifyDate as the last one
             for tag in tags:
                 if tag in metadata:
-                    img_creation_date = datetime.strptime(metadata[tag], "%Y:%m:%d %H:%M:%S")
+                    try:
+                        img_creation_date = datetime.strptime(metadata[tag], "%Y:%m:%d %H:%M:%S")
+                    except:
+                        img_creation_date = datetime.strptime(metadata[tag], "%Y:%m:%d %H:%M:%S%z")
                     break
         elif mime_type == "video/quicktime":
             if "QuickTime:CreationDate" in metadata:
                 img_creation_date = datetime.strptime(metadata["QuickTime:CreationDate"], "%Y:%m:%d %H:%M:%S%z")
+        elif mime_type == "video/mp4":
+            if "QuickTime:MediaCreateData" in metadata:
+                img_creation_date = datetime.strptime(metadata["QuickTime:MediaCreateData"], "%Y:%m:%d %H:%M:%S")
+            elif "QuickTime:CreateDate" in metadata:
+                img_creation_date = datetime.strptime(metadata["QuickTime:CreateDate"], "%Y:%m:%d %H:%M:%S")
+        else:
+            print(f"Unknown mime_type: {mime_type} for {file_path}")
     except Exception as e:
         print("Exception wile parsing the file {}: {}".format(file_path, e), file=sys.stderr)
         return None
